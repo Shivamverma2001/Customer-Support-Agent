@@ -1,11 +1,15 @@
 /**
- * RPC entry: app + AppType only (no Node/serve).
- * Frontend imports from "api/rpc" for type-safe client so it doesn't pull in Node code.
+ * RPC entry: app + AppType (no Node/serve).
+ * Phase 2: All 7 API routes, controller–service pattern, error middleware.
  */
 import { Hono } from "hono";
+import * as chatController from "./controllers/chatController";
+import * as agentsController from "./controllers/agentsController";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 const app = new Hono();
 
+// ——— Health
 app.get("/api/health", (c) => {
   return c.json({
     status: "ok",
@@ -13,6 +17,20 @@ app.get("/api/health", (c) => {
     service: "customer-support-api",
   });
 });
+
+// ——— Chat (Phase 2: stub reply in POST)
+app.post("/api/chat/messages", (c) => chatController.postMessage(c));
+app.get("/api/chat/conversations", (c) => chatController.listConversations(c));
+app.get("/api/chat/conversations/:id", (c) => chatController.getConversationById(c));
+app.delete("/api/chat/conversations/:id", (c) => chatController.deleteConversation(c));
+
+// ——— Agents
+app.get("/api/agents", (c) => agentsController.listAgents(c));
+app.get("/api/agents/:type/capabilities", (c) => agentsController.getCapabilities(c));
+
+// Error handling (Phase 2 requirement)
+app.onError(errorHandler);
+app.notFound(notFoundHandler);
 
 export type AppType = typeof app;
 export { app };

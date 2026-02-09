@@ -2,7 +2,7 @@
 
 **Fullstack Engineering Assessment** — Single reference document: requirements from the assessment PDF + logic/rationale from analysis.
 
-**Current implementation:** Turborepo monorepo with **apps/api** (Hono + Prisma + PostgreSQL) and **apps/web** (React/Vite). **Hono RPC** in place: api exports `AppType` from `src/rpc.ts`, web uses type-safe `apiClient.api.health.$get()`. Phase 1 (Foundation) done; Phase 2+ in progress.
+**Current implementation:** Turborepo monorepo with **apps/api** (Hono + Prisma + PostgreSQL) and **apps/web** (React/Vite). **Hono RPC** in place. Phase 1 done; **Phase 2 done** (controller–service, error middleware, all 7 API routes with stub POST /messages); Phase 3+ in progress.
 
 ---
 
@@ -28,7 +28,7 @@ Work in these phases so you cover everything in a logical order and don’t bloc
 | Phase | Name | What you cover | Done when |
 |-------|------|----------------|-----------|
 | **1** | **Foundation** | Repo, tech stack, DB schema, seed data, migrations | You have a runnable app with real data in PostgreSQL. *(Done: monorepo, apps/api, apps/web, seed, GET /api/health.)* |
-| **2** | **Backend skeleton** | Controller–service pattern, error middleware, all 7 API routes (stub responses OK first) | Every route exists and returns something; architecture is in place. |
+| **2** | **Backend skeleton** | Controller–service pattern, error middleware, all 7 API routes (stub responses OK first) | Every route exists and returns something; architecture is in place. *(Done.)* |
 | **3** | **Agents & tools** | Router (classify → delegate → fallback), all 3 sub-agents, each with tools that read from DB; conversation context | Router picks the right agent; each agent can call its tools and get real data. |
 | **4** | **Chat flow & persistence** | POST /messages: full flow (router → agent → tools → reply), persist conversations & messages (req. 10), streaming (req. 9), typing indicator (req. 11) | Sending a message returns a grounded, streamed reply and everything is saved. |
 | **5** | **Frontend** | Basic UI (React/Vite): chat, conversation list, send message, show replies, streaming + “agent is typing” | A user can chat through the UI and see streaming + typing. |
@@ -56,18 +56,18 @@ Use this list so you don’t forget anything. Check off each item when done. **P
 
 ### Phase 2 — Architecture (req. 1–3)
 
-- [ ] **1. Controller–Service pattern** — controllers thin (HTTP only); logic in services
-- [ ] **2. Clean separation of concerns** — distinct layers: routes → controllers → services → data/agents
-- [ ] **3. Error-handling middleware** — catch errors, consistent JSON, status codes, logging (“throughout”)
+- [x] **1. Controller–Service pattern** — controllers thin (HTTP only); logic in services → **controllers/**, **services/**
+- [x] **2. Clean separation of concerns** — distinct layers: routes → controllers → services → data/agents
+- [x] **3. Error-handling middleware** — catch errors, consistent JSON, status codes, logging (“throughout”) → **middleware/errorHandler.ts**
 
 ### Phase 2 — API routes (all under `/api`)
 
-- [ ] **POST** `/api/chat/messages` — send message → router → sub-agent → tools → persist & stream/return reply
-- [ ] **GET** `/api/chat/conversations/:id` — get conversation history
-- [ ] **GET** `/api/chat/conversations` — list user conversations
-- [ ] **DELETE** `/api/chat/conversations/:id` — delete conversation
-- [ ] **GET** `/api/agents` — list available agents
-- [ ] **GET** `/api/agents/:type/capabilities` — get agent capabilities
+- [x] **POST** `/api/chat/messages` — send message (stub reply); persist user + assistant message → **chatController.postMessage**
+- [x] **GET** `/api/chat/conversations/:id` — get conversation history → **chatController.getConversationById**
+- [x] **GET** `/api/chat/conversations` — list user conversations → **chatController.listConversations**
+- [x] **DELETE** `/api/chat/conversations/:id` — delete conversation → **chatController.deleteConversation**
+- [x] **GET** `/api/agents` — list available agents → **agentsController.listAgents**
+- [x] **GET** `/api/agents/:type/capabilities` — get agent capabilities → **agentsController.getCapabilities**
 - [x] **GET** `/api/health` — health check → **apps/api/src/rpc.ts**
 
 ### Phase 3 — Multi-agent system
@@ -117,7 +117,7 @@ assignment/
 ├── apps/
 │   ├── api/                 # Hono, Prisma, PostgreSQL
 │   │   ├── prisma/          # schema.prisma, seed.ts
-│   │   └── src/             # index.ts (serve), rpc.ts (routes + AppType)
+│   │   └── src/             # index.ts, rpc.ts (routes), controllers/, services/, middleware/, lib/
 │   └── web/                 # React + Vite
 │       └── src/             # App.tsx, api-client.ts (hc<AppType>)
 ├── package.json             # workspaces, turbo scripts
