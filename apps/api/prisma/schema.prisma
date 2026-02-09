@@ -1,0 +1,113 @@
+// Prisma schema for AI Customer Support system
+// Phase 1: Foundation - orders, payments, conversations for agent tools + seed
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  conversations Conversation[]
+  orders        Order[]
+  invoices      Invoice[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String       // "user" | "assistant"
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
+
+model Order {
+  id          String    @id @default(cuid())
+  orderNumber String    @unique
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String    // e.g. "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"
+  totalAmount Decimal   @db.Decimal(10, 2)
+  items       String    @db.Text // JSON summary of items for display
+  delivery    Delivery?
+  invoices    Invoice[]
+  refunds     Refund[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([orderNumber])
+}
+
+model Delivery {
+  id                String   @id @default(cuid())
+  orderId           String   @unique
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  carrier           String
+  trackingNumber    String?
+  status            String   // e.g. "pending" | "in_transit" | "delivered"
+  estimatedDelivery DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  invoiceNumber String @unique
+  orderId   String?
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Decimal  @db.Decimal(10, 2)
+  status    String   // "pending" | "paid"
+  dueDate   DateTime?
+  paidAt    DateTime?
+  refunds   Refund[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([invoiceNumber])
+}
+
+model Refund {
+  id          String   @id @default(cuid())
+  refundNumber String   @unique
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  orderId     String?
+  order       Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  amount      Decimal  @db.Decimal(10, 2)
+  status      String   // "pending" | "approved" | "rejected"
+  reason      String?  @db.Text
+  requestedAt DateTime @default(now())
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@index([orderId])
+}

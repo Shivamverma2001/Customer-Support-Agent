@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Turbo
+.turbo/
+
+# Env (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+*.log

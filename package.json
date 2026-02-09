@@ -1,0 +1,20 @@
+{
+  "name": "customer-support-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:api": "turbo run dev --filter=api",
+    "dev:web": "turbo run dev --filter=web",
+    "db:generate": "turbo run db:generate --filter=api",
+    "db:push": "turbo run db:push --filter=api",
+    "db:seed": "turbo run db:seed --filter=api"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "packageManager": "npm@10.0.0"
+}
