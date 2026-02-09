@@ -49,6 +49,18 @@ export async function getConversationById(conversationId: string, userId?: strin
   };
 }
 
+/** Last N messages as text for agent context (Phase 3: query conversation history tool). */
+export async function getConversationHistoryForAgent(
+  conversationId: string,
+  userId?: string,
+  limit = 20
+): Promise<string | null> {
+  const conv = await getConversationById(conversationId, userId);
+  if (!conv) return null;
+  const last = conv.messages.slice(-limit);
+  return last.map((m) => `[${m.role}]: ${m.content}`).join("\n");
+}
+
 export async function deleteConversation(conversationId: string, userId?: string) {
   const uid = userId ?? (await getOrCreateDemoUserId());
   const deleted = await prisma.conversation.deleteMany({
@@ -57,8 +69,13 @@ export async function deleteConversation(conversationId: string, userId?: string
   return deleted.count > 0;
 }
 
-export async function createMessage(conversationId: string | null, content: string, role: "user" | "assistant") {
-  const uid = await getOrCreateDemoUserId();
+export async function createMessage(
+  conversationId: string | null,
+  content: string,
+  role: "user" | "assistant",
+  userId?: string
+) {
+  const uid = userId ?? (await getOrCreateDemoUserId());
   let convId = conversationId;
   if (!convId) {
     const conv = await prisma.conversation.create({
@@ -75,15 +92,35 @@ export async function createMessage(conversationId: string | null, content: stri
   return { conversationId: convId, messageId: message.id, createdAt: message.createdAt.toISOString() };
 }
 
-/** Stub: create user message and a placeholder assistant reply (Phase 2). Phase 4 will add real agent flow. */
-export async function sendMessage(conversationId: string | null, content: string) {
-  const userMsg = await createMessage(conversationId, content, "user");
+/** Phase 3: Router → sub-agent with tools; persist user + assistant message. */
+export async function sendMessage(conversationId: string | null, content: string, userId?: string) {
+  const userMsg = await createMessage(conversationId, content, "user", userId);
   if (!userMsg) return null;
-  const stubReply = "Thanks for your message. This is a placeholder reply; the AI agent flow will be added in Phase 4.";
-  await createMessage(userMsg.conversationId, stubReply, "assistant");
+
+  const conv = await getConversationById(userMsg.conversationId, userId);
+  if (!conv) return null;
+
+  const { routeIntent } = await import("../agents/router");
+  const { runAgent } = await import("../agents/runAgent");
+
+  const messages = conv.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  const latestMessage = content;
+  const conversationSummary =
+    messages.length > 1
+      ? messages
+          .slice(0, -1)
+          .map((m) => `[${m.role}]: ${m.content}`)
+          .join("\n")
+      : undefined;
+
+  const intent = await routeIntent(latestMessage, conversationSummary);
+  const ctx = { conversationId: userMsg.conversationId, userId };
+  const reply = await runAgent(intent, messages, ctx);
+
+  await createMessage(userMsg.conversationId, reply, "assistant", userId);
   return {
     conversationId: userMsg.conversationId,
     messageId: userMsg.messageId,
-    reply: stubReply,
+    reply,
   };
 }

@@ -33,7 +33,7 @@ export async function postMessage(c: Context) {
   const content = body && typeof body.content === "string" ? body.content.trim() : "";
   const conversationId = body && typeof body.conversationId === "string" ? body.conversationId : null;
   if (!content) throw new HTTPException(400, { message: "content is required" });
-  const result = await chatService.sendMessage(conversationId, content);
+  const result = await chatService.sendMessage(conversationId, content, getUserId(c));
   if (!result) throw new HTTPException(404, { message: "Conversation not found" });
   return c.json(
     {

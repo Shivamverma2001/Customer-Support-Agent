@@ -2,7 +2,7 @@
 
 **Fullstack Engineering Assessment** — Single reference document: requirements from the assessment PDF + logic/rationale from analysis.
 
-**Current implementation:** Turborepo monorepo with **apps/api** (Hono + Prisma + PostgreSQL) and **apps/web** (React/Vite). **Hono RPC** in place. Phase 1 done; **Phase 2 done** (controller–service, error middleware, all 7 API routes with stub POST /messages); Phase 3+ in progress.
+**Current implementation:** Turborepo monorepo with **apps/api** (Hono + Prisma + PostgreSQL) and **apps/web** (React/Vite). **Hono RPC** in place. Phase 1 & 2 done; **Phase 3 done** (router + support/order/billing agents with DB-backed tools, conversation context; POST /messages uses full agent flow).
 
 ---
 
@@ -72,14 +72,14 @@ Use this list so you don’t forget anything. Check off each item when done. **P
 
 ### Phase 3 — Multi-agent system
 
-- [ ] **Router (parent):** analyzes incoming query, classifies intent, delegates to correct sub-agent
-- [ ] **Router:** fallback for unclassified / low-confidence queries
-- [ ] **Support agent** — general support, FAQs, troubleshooting; tool: **query conversation history** (from DB)
-- [ ] **Order agent** — order status, tracking, modifications, cancellations; tools: **fetch order details**, **check delivery status** (from DB)
-- [ ] **Billing agent** — payment issues, refunds, invoices, subscription queries; tools: **get invoice details**, **check refund status** (from DB)
-- [ ] **Req. 4:** Every sub-agent has tools (no agent without tools)
-- [ ] **Req. 5:** Tools query **actual data from database** (mock/seed data is enough; no hardcoded fake responses)
-- [ ] **Req. 7:** Conversation context — agents receive **User’s previous contexts** (prior messages in thread)
+- [x] **Router (parent):** analyzes incoming query, classifies intent, delegates to correct sub-agent → **agents/router.ts**
+- [x] **Router:** fallback for unclassified / low-confidence queries → **runAgent** fallback for `unknown`
+- [x] **Support agent** — general support, FAQs, troubleshooting; tool: **query conversation history** (from DB)
+- [x] **Order agent** — order status, tracking, modifications, cancellations; tools: **fetch order details**, **check delivery status** (from DB)
+- [x] **Billing agent** — payment issues, refunds, invoices, subscription queries; tools: **get invoice details**, **check refund status** (from DB)
+- [x] **Req. 4:** Every sub-agent has tools (no agent without tools)
+- [x] **Req. 5:** Tools query **actual data from database** (orderService, billingService, chatService)
+- [x] **Req. 7:** Conversation context — agents receive **User’s previous contexts** (prior messages in thread)
 
 ### Phase 4 — API & Database (req. 8–11)
 
@@ -117,7 +117,7 @@ assignment/
 ├── apps/
 │   ├── api/                 # Hono, Prisma, PostgreSQL
 │   │   ├── prisma/          # schema.prisma, seed.ts
-│   │   └── src/             # index.ts, rpc.ts (routes), controllers/, services/, middleware/, lib/
+│   │   └── src/             # index.ts, rpc.ts (routes), controllers/, services/, middleware/, lib/, agents/
 │   └── web/                 # React + Vite
 │       └── src/             # App.tsx, api-client.ts (hc<AppType>)
 ├── package.json             # workspaces, turbo scripts
@@ -290,6 +290,16 @@ assignment/
 **Billing agent:** Tools = get invoice details, check refund status (input: e.g. `invoiceId` / `refundId`; output: short summary from DB).
 
 All tools: call **service layer** → service uses ORM → return concise text for the LLM.
+
+---
+
+## Phase 3 implementation review (current)
+
+- **Spec alignment:** Router classifies intent (support | order | billing | unknown); fallback message for unknown; all three sub-agents have DB-backed tools; conversation context passed as full message history + optional summary to router. GET /api/agents and GET /api/agents/:type/capabilities match the three agents and tool names.
+- **Layers:** Routes → controllers → services (chatService orchestrates; orderService, billingService, agents/*). Tools call services only; no Prisma in agent code.
+- **User scoping:** Optional `x-user-id` applied in chatController and passed through sendMessage → createMessage and agent context; order/billing tools use same userId (or demo user when header omitted). Demo user created by seed and by chatService.getOrCreateDemoUserId when creating conversations.
+- **Persistence:** User and assistant messages are both persisted in sendMessage (req. 10 partially satisfied; streaming/typing in Phase 4).
+- **Notes:** If the LLM or router throws (e.g. missing OPENAI_API_KEY, network error), the user message is already saved but no assistant message is written; the API returns 5xx and the conversation has an unresponded user message. Consider in Phase 4: catch errors and persist a generic “Something went wrong” assistant message, or document that reviewers must set OPENAI_API_KEY. Set OPENAI_API_KEY (and optionally OPENAI_MODEL) in apps/api/.env for POST /api/chat/messages to work.
 
 ---
 
