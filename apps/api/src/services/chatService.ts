@@ -124,3 +124,76 @@ export async function sendMessage(conversationId: string | null, content: string
     reply,
   };
 }
+
+/** Phase 4: stream event types (typing indicator, text chunks, done with persistence, error). */
+export type StreamEvent =
+  | { type: "typing" }
+  | { type: "chunk"; text: string }
+  | { type: "done"; conversationId: string; messageId: string; reply: string }
+  | { type: "error"; code: number; message: string };
+
+/** Phase 4: async generator that yields typing, then chunks, then done; persists assistant message on done. */
+export async function* sendMessageStream(
+  conversationId: string | null,
+  content: string,
+  userId?: string
+): AsyncGenerator<StreamEvent, void, undefined> {
+  const userMsg = await createMessage(conversationId, content, "user", userId);
+  if (!userMsg) {
+    yield { type: "error", code: 404, message: "Conversation not found" };
+    return;
+  }
+
+  const conv = await getConversationById(userMsg.conversationId, userId);
+  if (!conv) {
+    yield { type: "error", code: 404, message: "Conversation not found" };
+    return;
+  }
+
+  const { routeIntent } = await import("../agents/router");
+  const { runAgentStream } = await import("../agents/runAgent");
+
+  const messages = conv.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  const latestMessage = content;
+  const conversationSummary =
+    messages.length > 1
+      ? messages
+          .slice(0, -1)
+          .map((m) => `[${m.role}]: ${m.content}`)
+          .join("\n")
+      : undefined;
+
+  const intent = await routeIntent(latestMessage, conversationSummary);
+  const ctx = { conversationId: userMsg.conversationId, userId };
+
+  yield { type: "typing" };
+
+  const outcome = runAgentStream(intent, messages, ctx);
+
+  if (outcome.type === "fallback") {
+    yield { type: "chunk", text: outcome.text };
+    const assistant = await createMessage(userMsg.conversationId, outcome.text, "assistant", userId);
+    yield {
+      type: "done",
+      conversationId: userMsg.conversationId,
+      messageId: assistant?.messageId ?? "",
+      reply: outcome.text,
+    };
+    return;
+  }
+
+  let reply = "";
+  for await (const chunk of outcome.result.textStream) {
+    reply += chunk;
+    yield { type: "chunk", text: chunk };
+  }
+  const finalText = await outcome.result.text;
+  const fullReply = (finalText ?? reply) || "I'm sorry, I couldn't generate a response.";
+  const assistant = await createMessage(userMsg.conversationId, fullReply, "assistant", userId);
+  yield {
+    type: "done",
+    conversationId: userMsg.conversationId,
+    messageId: assistant?.messageId ?? "",
+    reply: fullReply,
+  };
+}

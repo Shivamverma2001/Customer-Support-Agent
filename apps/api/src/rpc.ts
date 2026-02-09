@@ -18,8 +18,9 @@ app.get("/api/health", (c) => {
   });
 });
 
-// ——— Chat (Phase 2: stub reply in POST)
+// ——— Chat (Phase 2: POST messages; Phase 4: streaming)
 app.post("/api/chat/messages", (c) => chatController.postMessage(c));
+app.post("/api/chat/messages/stream", (c) => chatController.postMessageStream(c));
 app.get("/api/chat/conversations", (c) => chatController.listConversations(c));
 app.get("/api/chat/conversations/:id", (c) => chatController.getConversationById(c));
 app.delete("/api/chat/conversations/:id", (c) => chatController.deleteConversation(c));

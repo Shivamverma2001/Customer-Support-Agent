@@ -2,7 +2,7 @@
 
 **Fullstack Engineering Assessment** — Single reference document: requirements from the assessment PDF + logic/rationale from analysis.
 
-**Current implementation:** Turborepo monorepo with **apps/api** (Hono + Prisma + PostgreSQL) and **apps/web** (React/Vite). **Hono RPC** in place. Phase 1 & 2 done; **Phase 3 done** (router + support/order/billing agents with DB-backed tools, conversation context; POST /messages uses full agent flow).
+**Current implementation:** Turborepo monorepo with **apps/api** (Hono + Prisma + PostgreSQL) and **apps/web** (React/Vite, Tailwind CSS). **Hono RPC** in place. Phases 1–4 done; **Phase 5 done** (chat UI: conversation list, messages, streamed replies, “agent is typing” indicator).
 
 ---
 
@@ -83,15 +83,15 @@ Use this list so you don’t forget anything. Check off each item when done. **P
 
 ### Phase 4 — API & Database (req. 8–11)
 
-- [ ] **8.** RESTful API for chat interactions
-- [ ] **9.** (Recommended) Streaming responses from AI agents
-- [ ] **10.** Conversation and message persistence (store in DB)
-- [ ] **11.** Real-time “agent is typing” indicator
+- [x] **8.** RESTful API for chat interactions (POST /messages, POST /messages/stream)
+- [x] **9.** (Recommended) Streaming responses → POST /api/chat/messages/stream (NDJSON: typing, chunk, done)
+- [x] **10.** Conversation and message persistence (user + assistant in sendMessage and sendMessageStream)
+- [x] **11.** Real-time “agent is typing” indicator
 
 ### Phase 5 — Frontend
 
-- [ ] **Basic UI** (React/Vite): chat interface, conversation list, send message, show replies
-- [ ] Show streaming reply and “agent is typing” state
+- [x] **Basic UI** (React/Vite + Tailwind): chat interface, conversation list, send message, show replies
+- [x] Show streaming reply and “agent is typing” state
 
 ### Phase 6 — Bonus (optional)
 
@@ -204,7 +204,8 @@ assignment/
 ```
 /api
 ├── /chat
-│   ├── POST   /messages              # Send new message
+│   ├── POST   /messages              # Send message (JSON reply)
+│   ├── POST   /messages/stream       # Send message (NDJSON stream: typing, chunk, done)
 │   ├── GET    /conversations/:id     # Get conversation history
 │   ├── GET    /conversations         # List user conversations
 │   └── DELETE /conversations/:id     # Delete conversation
@@ -216,7 +217,8 @@ assignment/
 
 **Intent of each:**
 
-- **POST /api/chat/messages** – Send user message; create/load conversation; run router → sub-agent → tools; stream or return reply; persist message.
+- **POST /api/chat/messages** – Send message; return full JSON reply; persist user + assistant message.
+- **POST /api/chat/messages/stream** – Send message; return NDJSON stream: `{ type: "typing" }`, `{ type: "chunk", text }`, `{ type: "done", conversationId, messageId, reply }`; persist on done.
 - **GET /api/chat/conversations/:id** – Return one conversation and its messages (for UI and for “query conversation history”).
 - **GET /api/chat/conversations** – List conversations for the user.
 - **DELETE /api/chat/conversations/:id** – Delete a conversation.
@@ -293,12 +295,14 @@ All tools: call **service layer** → service uses ORM → return concise text f
 
 ---
 
-## Phase 3 implementation review (current)
+## Phase 3 & 4 implementation review (current)
 
 - **Spec alignment:** Router classifies intent (support | order | billing | unknown); fallback message for unknown; all three sub-agents have DB-backed tools; conversation context passed as full message history + optional summary to router. GET /api/agents and GET /api/agents/:type/capabilities match the three agents and tool names.
 - **Layers:** Routes → controllers → services (chatService orchestrates; orderService, billingService, agents/*). Tools call services only; no Prisma in agent code.
 - **User scoping:** Optional `x-user-id` applied in chatController and passed through sendMessage → createMessage and agent context; order/billing tools use same userId (or demo user when header omitted). Demo user created by seed and by chatService.getOrCreateDemoUserId when creating conversations.
-- **Persistence:** User and assistant messages are both persisted in sendMessage (req. 10 partially satisfied; streaming/typing in Phase 4).
+- **Persistence:** User and assistant messages persisted in sendMessage and sendMessageStream (req. 10).
+- **Phase 4:** POST /api/chat/messages/stream returns NDJSON.
+- **Phase 5:** apps/web: Tailwind CSS; conversation list (sidebar), message list, send input; POST /messages/stream with NDJSON parsing; “agent is typing” bubble and streamed chunks; auto-scroll to bottom on new messages and streaming updates. Phase 4 detail: `typing`, `chunk`, `done` (always sent; `messageId` empty if assistant persist failed); `error` events include `code` (e.g. 404, 500). Sub-agents use streamText; typing event sent before chunks.
 - **Notes:** If the LLM or router throws (e.g. missing OPENAI_API_KEY, network error), the user message is already saved but no assistant message is written; the API returns 5xx and the conversation has an unresponded user message. Consider in Phase 4: catch errors and persist a generic “Something went wrong” assistant message, or document that reviewers must set OPENAI_API_KEY. Set OPENAI_API_KEY (and optionally OPENAI_MODEL) in apps/api/.env for POST /api/chat/messages to work.
 
 ---

@@ -44,3 +44,37 @@ export async function postMessage(c: Context) {
     201
   );
 }
+
+/** Phase 4: stream reply with typing indicator. Returns NDJSON stream: { type: 'typing' } | { type: 'chunk', text } | { type: 'done', conversationId, messageId, reply }. */
+export async function postMessageStream(c: Context) {
+  const body = await c.req.json().catch(() => null);
+  const content = body && typeof body.content === "string" ? body.content.trim() : "";
+  const conversationId = body && typeof body.conversationId === "string" ? body.conversationId : null;
+  if (!content) throw new HTTPException(400, { message: "content is required" });
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      try {
+        for await (const event of chatService.sendMessageStream(conversationId, content, getUserId(c))) {
+          controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+        }
+      } catch (err) {
+        controller.enqueue(
+          encoder.encode(JSON.stringify({ type: "error", code: 500, message: String((err as Error).message) }) + "\n")
+        );
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/x-ndjson",
+      "Cache-Control": "no-store",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
