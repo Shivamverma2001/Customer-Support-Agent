@@ -14,10 +14,13 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [loaderWord, setLoaderWord] = useState(0);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [healthOk, setHealthOk] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const LOADER_WORDS = ["Thinking...", "Searching...", "Reading your message...", "Checking context..."];
 
   const loadConversations = useCallback(async () => {
     try {
@@ -71,13 +74,31 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming, streamingContent]);
 
+  // Phase 6 bonus: rotate loader words while waiting for first chunk
+  useEffect(() => {
+    if (!streaming || streamingContent) return;
+    const id = setInterval(() => {
+      setLoaderWord((w) => (w + 1) % LOADER_WORDS.length);
+    }, 1500);
+    return () => clearInterval(id);
+  }, [streaming, streamingContent]);
+
   const handleSend = useCallback(() => {
     const content = input.trim();
     if (!content || streaming) return;
     setInput("");
     setStreaming(true);
     setStreamingContent("");
+    setLoaderWord(0);
     setError(null);
+    // Optimistic user message so the user sees their message immediately
+    const userMsg = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
 
     postMessageStream(
       { content, conversationId: selectedId },
@@ -90,7 +111,6 @@ function App() {
           } else if (ev.type === "done") {
             setMessages((prev) => [
               ...prev,
-              { id: `user-${Date.now()}`, role: "user", content, createdAt: new Date().toISOString() },
               { id: ev.messageId, role: "assistant", content: ev.reply, createdAt: new Date().toISOString() },
             ]);
             setStreaming(false);
@@ -104,9 +124,14 @@ function App() {
           }
         },
       }
-    ).then(() => {
-      setStreaming(false);
-    });
+    )
+      .then(() => {
+        setStreaming(false);
+      })
+      .catch(() => {
+        setStreaming(false);
+        setError("Failed to send message");
+      });
   }, [input, selectedId, streaming, loadConversations]);
 
   const handleNewChat = useCallback(() => {
@@ -217,7 +242,7 @@ function App() {
                   ) : (
                     <p className="flex items-center gap-1.5 text-sm text-slate-500">
                       <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
-                      Agent is typing...
+                      {LOADER_WORDS[loaderWord]}
                     </p>
                   )}
                 </div>

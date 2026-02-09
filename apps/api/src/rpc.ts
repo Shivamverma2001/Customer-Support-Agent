@@ -1,13 +1,16 @@
 /**
  * RPC entry: app + AppType (no Node/serve).
- * Phase 2: All 7 API routes, controller–service pattern, error middleware.
+ * Phase 2: All 7 API routes; Phase 6 bonus: rate limiting.
  */
 import { Hono } from "hono";
 import * as chatController from "./controllers/chatController";
 import * as agentsController from "./controllers/agentsController";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { rateLimitMiddleware } from "./middleware/rateLimit";
 
 const app = new Hono();
+
+app.use("*", rateLimitMiddleware);
 
 // ——— Health
 app.get("/api/health", (c) => {

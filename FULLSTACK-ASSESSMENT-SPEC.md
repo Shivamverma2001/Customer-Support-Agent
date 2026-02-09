@@ -2,7 +2,7 @@
 
 **Fullstack Engineering Assessment** — Single reference document: requirements from the assessment PDF + logic/rationale from analysis.
 
-**Current implementation:** Turborepo monorepo with **apps/api** (Hono + Prisma + PostgreSQL) and **apps/web** (React/Vite, Tailwind CSS). **Hono RPC** in place. Phases 1–4 done; **Phase 5 done** (chat UI: conversation list, messages, streamed replies, “agent is typing” indicator).
+**Current implementation:** Turborepo monorepo with **apps/api** (Hono + Prisma + PostgreSQL) and **apps/web** (React/Vite, Tailwind CSS). **Hono RPC** in place. Phases 1–5 done; **Phase 6 submission** (README + setup done; Loom by author) (chat UI: conversation list, messages, streamed replies, “agent is typing” indicator).
 
 ---
 
@@ -95,18 +95,18 @@ Use this list so you don’t forget anything. Check off each item when done. **P
 
 ### Phase 6 — Bonus (optional)
 
-- [ ] Rate limiting implementation
-- [ ] Usage of https://useworkflow.dev
-- [ ] Unit / integration tests
-- [ ] Context management / Compaction (when running out of tokens)
-- [ ] Show reasoning of the AI, or loader with words like “Thinking”, “Searching”
+- [x] Rate limiting implementation → middleware/rateLimit.ts
+- [x] Usage of https://useworkflow.dev → workflows/chatWorkflow.ts (pattern; full durability with Nitro)
+- [x] Unit / integration tests → Vitest, api.test.ts
+- [x] Context management / Compaction → MAX_CONTEXT_MESSAGES = 25 in chatService
+- [x] Show reasoning / loader words (Thinking…, Searching… in App.tsx), or loader with words like “Thinking”, “Searching”
 - [ ] Deployed live demo
 
 ### Phase 6 — Submission (req. 12–14)
 
-- [ ] **12.** GitHub repository with README
-- [ ] **13.** Loom video walkthrough (2–5 min) — walk through code and explain decisions
-- [ ] **14.** Working setup instructions: how to set env, DB, run seed, install deps, run app (so reviewers can run locally)
+- [x] **12.** GitHub repository with README → **README.md** (overview, setup, layout, submission)
+- [ ] **13.** Loom video walkthrough (2–5 min) — author to record: run app, show chat/streaming, walk through code (routing, agents, tools)
+- [x] **14.** Working setup instructions → **README.md** (env, DB, seed, install, build api, run dev; reviewers can run locally)
 
 **Reminders:** Evaluation focus = backend architecture, multi-agent design, tool implementation, API design. Important Note = your architecture and implementation should be yours (you’ll explain your decisions).
 
@@ -269,9 +269,9 @@ assignment/
 
 ## Submission (requirements 12–14)
 
-- [ ] **12. GitHub repository** with README.  
-- [ ] **13. Loom video walkthrough** (2–5 min) — walk through app and code; explain routing, tools, and main decisions.  
-- [ ] **14. Working setup instructions** — env vars, DB setup, seed, install, run (so reviewers can run it locally).
+- [x] **12. GitHub repository** with README.  
+- [ ] **13. Loom video walkthrough** (2–5 min) — author to record: walk through app and code; explain routing, tools, and main decisions.  
+- [x] **14. Working setup instructions** — env vars, DB setup, seed, install, run (in README; reviewers can run locally).
 
 ---
 

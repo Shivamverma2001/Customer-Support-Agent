@@ -10,6 +10,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -18,18 +20,19 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "ai": "^4.0.0",
     "@ai-sdk/openai": "^1.0.0",
-    "dotenv": "^16.4.0",
-    "hono": "^4.6.0",
     "@hono/node-server": "^1.13.0",
     "@prisma/client": "^6.0.0",
+    "ai": "^4.0.0",
+    "dotenv": "^16.4.0",
+    "hono": "^4.6.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "prisma": "^6.0.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^4.0.18"
   }
 }

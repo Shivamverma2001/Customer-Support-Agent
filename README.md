@@ -1,59 +1,68 @@
 # AI Customer Support – Full Stack Assessment
 
-Multi-agent customer support system (router + Support / Order / Billing agents) with React/Vite frontend and Hono API.
+Multi-agent customer support system with a **router** that delegates to **Support**, **Order**, and **Billing** agents. Each agent has DB-backed tools. React/Vite + Tailwind frontend with streaming chat; Hono API with Prisma + PostgreSQL.
 
-**Monorepo:** Turborepo with **Hono RPC** for end-to-end type-safe API calls from the frontend.
+**Status:** Phases 1–5 done. Ready for submission (README + setup below; Loom walkthrough to be recorded by the author).
 
-## Phase 1 – Foundation (current)
-
-- **Backend (apps/api):** Hono, Prisma, PostgreSQL. Health check at `GET /api/health`. Exports `AppType` for RPC.
-- **Frontend (apps/web):** React + Vite. Basic UI; uses type-safe `apiClient.api.health.$get()` (Hono RPC).
-- **Database:** Schema for users, conversations, messages, orders, deliveries, invoices, refunds. Seed script for sample data.
+---
 
 ## Prerequisites
 
-- Node.js 18+
-- PostgreSQL (recommended: [Neon](https://neon.tech) free tier — no local install)
-- npm
+- **Node.js** 18+
+- **PostgreSQL** (e.g. [Neon](https://neon.tech) free tier — no local install required)
+- **npm**
+- **OpenAI API key** (for chat agents)
 
-## Setup
+---
 
-### 1. Install (from repo root)
+## Setup (so reviewers can run locally)
+
+### 1. Install dependencies (from repo root)
 
 ```bash
 npm install
 ```
 
-This installs dependencies for all workspaces (api + web).
+Installs dependencies for all workspaces (`api` + `web`).
 
-### 2. API: database and env
+### 2. Environment and database (API)
 
 ```bash
 cd apps/api
 cp .env.example .env
-# Edit .env and set DATABASE_URL:
-# - Neon: create project at https://neon.tech → Connect → copy connection string
-# - Local: DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/customer_support?schema=public"
+```
 
+Edit `apps/api/.env` and set:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string. Neon: create a project at [neon.tech](https://neon.tech) → Connect → copy the connection string. Local: `postgresql://USER:PASSWORD@localhost:5432/customer_support?schema=public` |
+| `OPENAI_API_KEY` | Yes (for chat) | OpenAI API key. Required for `POST /api/chat/messages` and streaming; get one at [platform.openai.com](https://platform.openai.com/api-keys). |
+| `OPENAI_MODEL` | No | Model name; defaults to `gpt-4o-mini`. |
+
+Then:
+
+```bash
 npx prisma generate
 npx prisma db push
 npm run db:seed
 ```
 
-Or from root: `npm run db:push` and `npm run db:seed` (run in api workspace).
+From repo root you can run: `npm run db:push` and `npm run db:seed` (they run in the api workspace).
 
 ### 3. Build API once (for Hono RPC types)
 
-So the web app can resolve type-safe API types, build the api once:
+The web app uses type-safe API types from the api package. Build the api once:
 
 ```bash
 npm run build --workspace=api
-# or: cd apps/api && npm run build
 ```
 
-### 4. Run dev
+(or `cd apps/api && npm run build`)
 
-From **repo root** (runs both api and web):
+### 4. Run the app
+
+From **repo root** (runs both API and web):
 
 ```bash
 npm run dev
@@ -61,58 +70,97 @@ npm run dev
 
 Or run separately:
 
-- **API:** `cd apps/api && npm run dev` → http://localhost:3000
-- **Web:** `cd apps/web && npm run dev` → http://localhost:5173 (proxies `/api` to API)
+- **API:** `cd apps/api && npm run dev` → **http://localhost:3000**
+- **Web:** `cd apps/web && npm run dev` → **http://localhost:5173** (Vite proxies `/api` to the API)
 
-Health: **http://localhost:3000/api/health**. Open **http://localhost:5173** to see the UI.
+**Check:**
+
+- API health: **http://localhost:3000/api/health**
+- Chat UI: **http://localhost:5173** — open in a browser; you can start a new conversation, send messages, and see streamed replies with an “agent is typing” indicator.
 
 ### 5. Local PostgreSQL (optional)
 
-Only if not using Neon: create a DB then set `DATABASE_URL` in `apps/api/.env`.
+If not using Neon, create a database and set `DATABASE_URL` in `apps/api/.env`:
 
 ```bash
 createdb customer_support
-# DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/customer_support?schema=public"
 ```
+
+---
+
+## What’s implemented
+
+- **Backend (apps/api):** Hono, Prisma, PostgreSQL. Controller–service pattern; error middleware; 7 API routes (health, chat messages + stream, conversations list/get/delete, agents list/capabilities). Router agent + Support / Order / Billing agents with tools (conversation history, order details, delivery status, invoice details, refund status). Streaming via `POST /api/chat/messages/stream` (NDJSON: typing, chunk, done).
+- **Frontend (apps/web):** React, Vite, Tailwind CSS. Chat UI: conversation list, message list, send input. Uses streaming endpoint; shows “agent is typing” and streamed reply; auto-scroll to bottom.
+- **Monorepo:** Turborepo; Hono RPC for type-safe API calls from web to api.
+
+See **FULLSTACK-ASSESSMENT-SPEC.md** for the full requirement list, phases, and checklist.
+
+---
 
 ## Project layout
 
 ```
 assignment/
 ├── apps/
-│   ├── api/              # Hono API, Prisma, PostgreSQL (exports AppType for RPC)
+│   ├── api/                    # Hono API, Prisma, PostgreSQL
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma
 │   │   │   └── seed.ts
 │   │   └── src/
-│   │       ├── index.ts
-│   │       └── rpc.ts      # routes + AppType for Hono RPC
-│   └── web/              # React + Vite (uses api via workspace + Hono client)
+│   │       ├── index.ts        # server entry
+│   │       ├── rpc.ts          # routes + AppType (Hono RPC)
+│   │       ├── controllers/
+│   │       ├── services/
+│   │       ├── agents/         # router, support/order/billing agents, tools
+│   │       ├── middleware/
+│   │       └── lib/
+│   └── web/                    # React + Vite + Tailwind
 │       └── src/
-│           ├── api-client.ts   # type-safe client: hc<AppType>
-│           └── App.tsx
-├── package.json          # root workspace + turbo scripts
+│           ├── App.tsx         # chat UI
+│           └── api-client.ts   # type-safe client + postMessageStream
+├── package.json               # workspaces, turbo scripts
 ├── turbo.json
 ├── FULLSTACK-ASSESSMENT-SPEC.md
 └── README.md
 ```
 
-## Hono RPC (bonus)
-
-- **api** exports `AppType` from `src/rpc.ts` (no Node/serve there) so the frontend gets route types without pulling in server code.
-- **web** uses `import type { AppType } from "api/rpc"` and `hc<AppType>(baseUrl)` so `apiClient.api.health.$get()` is type-safe. Build api once (`npm run build --workspace=api`) so web can resolve `api/rpc` types.
+---
 
 ## Seed data (req. 6)
 
-After `npm run db:seed` in `apps/api/` (or from root with turbo):
+After `npm run db:seed` in `apps/api/` (or via root/turbo):
 
-- **User:** demo@example.com
+- **User:** demo@example.com (used when no `x-user-id` header)
 - **Conversations:** 2 with sample messages
 - **Orders:** ORD-001 (shipped), ORD-002 (delivered), ORD-003 (pending)
 - **Deliveries:** tracking for ORD-001, ORD-002
 - **Invoices:** INV-001, INV-002 (paid), INV-003 (pending)
 - **Refunds:** REF-001 (approved), REF-002 (pending)
 
-## Next (Phases 2–6)
+You can ask the chat e.g. “Where is my order ORD-001?” or “What’s the status of refund REF-001?” to see the Order/Billing agents use the DB.
 
-See **FULLSTACK-ASSESSMENT-SPEC.md** for requirements, phases, and todo list.
+---
+
+## Submission (req. 12–14)
+
+- **12. GitHub repository with README** — This repo and this README.
+- **13. Loom video walkthrough (2–5 min)** — Record a short walkthrough: run the app, show the chat and streaming, then walk through the code (routing, agents, tools, API). Explain main decisions.
+- **14. Working setup instructions** — Above: env vars, DB (Neon or local), run seed, install deps, build api once, run dev. Reviewers can follow these steps to run the app locally.
+
+---
+
+## Hono RPC (bonus)
+
+- **api** exports `AppType` from `src/rpc.ts` so the frontend gets route types without pulling in server code.
+- **web** uses `import type { AppType } from "api/rpc"` and `hc<AppType>(baseUrl)` for type-safe calls. Build api once so web can resolve `api/rpc` types.
+
+---
+
+## Phase 6 optional bonuses
+
+- **Rate limiting:** In-memory rate limit by IP (60 req/min for API, 20/min for stream). Health check exempt. 429 with `Retry-After` when exceeded. See `apps/api/src/middleware/rateLimit.ts`.
+- **Unit / integration tests:** Vitest in `apps/api`; run `npm run test` (or `npm run test:watch`). Tests: health, agents list, capabilities, 404. See `apps/api/src/api.test.ts`.
+- **Context compaction:** Last 25 messages only are sent to the router/agents to avoid token overflow. See `MAX_CONTEXT_MESSAGES` in `apps/api/src/services/chatService.ts`.
+- **Loader words:** While waiting for the first stream chunk, the UI cycles through “Thinking…”, “Searching…”, “Reading your message…”, “Checking context…”. See `apps/web/src/App.tsx`.
+- **useworkflow.dev:** A workflow-style module at `apps/api/src/workflows/chatWorkflow.ts` mirrors the chat flow (route intent → run agent) for durable execution. Full [Workflow DevKit](https://useworkflow.dev) integration (suspend/resume, retries) requires running the API with [Nitro](https://useworkflow.dev/docs/getting-started/hono).

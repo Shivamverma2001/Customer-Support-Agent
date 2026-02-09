@@ -3,6 +3,9 @@ import { prisma } from "../lib/prisma";
 /** Default demo user email for Phase 2 when no x-user-id */
 const DEMO_EMAIL = "demo@example.com";
 
+/** Phase 6 bonus: context compaction — cap messages sent to the model to avoid token overflow. */
+const MAX_CONTEXT_MESSAGES = 25;
+
 async function getOrCreateDemoUserId(): Promise<string> {
   const user = await prisma.user.upsert({
     where: { email: DEMO_EMAIL },
@@ -103,7 +106,8 @@ export async function sendMessage(conversationId: string | null, content: string
   const { routeIntent } = await import("../agents/router");
   const { runAgent } = await import("../agents/runAgent");
 
-  const messages = conv.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  const allMessages = conv.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  const messages = allMessages.slice(-MAX_CONTEXT_MESSAGES);
   const latestMessage = content;
   const conversationSummary =
     messages.length > 1
@@ -153,7 +157,8 @@ export async function* sendMessageStream(
   const { routeIntent } = await import("../agents/router");
   const { runAgentStream } = await import("../agents/runAgent");
 
-  const messages = conv.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  const allMessages = conv.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  const messages = allMessages.slice(-MAX_CONTEXT_MESSAGES);
   const latestMessage = content;
   const conversationSummary =
     messages.length > 1
