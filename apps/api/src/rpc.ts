@@ -12,6 +12,16 @@ const app = new Hono();
 
 app.use("*", rateLimitMiddleware);
 
+// ——— Root (Vercel rewrite sends / here)
+app.get("/", (c) => {
+  return c.json({
+    service: "customer-support-api",
+    docs: "https://github.com/Shivamverma2001/Customer-Support-Agent",
+    health: "/api/health",
+  });
+});
+app.get("/favicon.ico", () => new Response(null, { status: 204 }));
+
 // ——— Health
 app.get("/api/health", (c) => {
   return c.json({
