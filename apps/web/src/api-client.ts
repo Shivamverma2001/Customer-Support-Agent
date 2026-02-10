@@ -3,9 +3,12 @@ import { hc } from "hono/client";
 
 /**
  * Type-safe API client (Hono RPC).
- * In dev, Vite proxies /api to the backend.
+ * In dev, Vite proxies /api to the backend. In production, set VITE_API_URL to your API origin.
  */
-const baseUrl = typeof window !== "undefined" ? "" : "http://localhost:3000";
+const baseUrl =
+  typeof window !== "undefined"
+    ? (import.meta.env.VITE_API_URL ?? "")
+    : "http://localhost:3000";
 
 export interface ApiClientShape {
   api: {
