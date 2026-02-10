@@ -11,7 +11,15 @@ import { rateLimitMiddleware } from "./middleware/rateLimit";
 
 const app = new Hono();
 
-app.use("*", cors());
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowHeaders: ["Content-Type", "Accept", "x-user-id"],
+    exposeHeaders: ["Content-Type"],
+  })
+);
 app.use("*", rateLimitMiddleware);
 
 // ——— Root (Vercel rewrite sends / here)

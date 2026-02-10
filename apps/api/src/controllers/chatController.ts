@@ -75,6 +75,7 @@ export async function postMessageStream(c: Context) {
       "Content-Type": "application/x-ndjson",
       "Cache-Control": "no-store",
       "X-Accel-Buffering": "no",
+      "Access-Control-Allow-Origin": "*",
     },
   });
 }
