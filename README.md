@@ -37,8 +37,13 @@ Edit `apps/api/.env` and set:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string. Neon: create a project at [neon.tech](https://neon.tech) → Connect → copy the connection string. Local: `postgresql://USER:PASSWORD@localhost:5432/customer_support?schema=public` |
-| `OPENAI_API_KEY` | Yes (for chat) | OpenAI API key. Required for `POST /api/chat/messages` and streaming; get one at [platform.openai.com](https://platform.openai.com/api-keys). |
+| `AI_PROVIDER` | No | `openai` (default), `groq`, or `gemini`. |
+| `OPENAI_API_KEY` | Yes (if OpenAI) | OpenAI API key. Get one at [platform.openai.com](https://platform.openai.com/api-keys). |
 | `OPENAI_MODEL` | No | Model name; defaults to `gpt-4o-mini`. |
+| `GROQ_API_KEY` | Yes (if Groq) | Groq API key. Get one at [console.groq.com](https://console.groq.com); free tier available. |
+| `GROQ_MODEL` | No | Model name; defaults to `llama-3.1-8b-instant`. |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Yes (if Gemini) | Gemini API key. Get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Supports tools. |
+| `GEMINI_MODEL` | No | Model name; defaults to `gemini-2.5-flash`. |
 
 Then:
 

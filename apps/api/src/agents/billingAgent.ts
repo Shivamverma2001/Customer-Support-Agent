@@ -1,10 +1,12 @@
-import { generateText, streamText } from "ai";
+import { generateText, streamText, stepCountIs } from "ai";
 import { getModel } from "./model";
 import { createBillingTools, type AgentContext } from "./tools";
 
 const BILLING_SYSTEM = `You are a billing support agent. You help with invoices, payments, refunds, and subscription or charge questions.
 Use get_invoice_details to look up an invoice by ID or invoice number (e.g. INV-001). Use check_refund_status for refund status (e.g. REF-001).
-Base your answers only on the data returned by tools. If an invoice or refund is not found, say so. Keep responses concise and accurate.`;
+Base your answers only on the data returned by tools. If an invoice or refund is not found, say so. Keep responses concise and accurate.
+
+IMPORTANT: After calling tools, you MUST always respond with a clear, conversational message to the user. Never end without writing a text reply.`;
 
 const toModelMessages = (messages: Array<{ role: string; content: string }>) =>
   messages
@@ -21,7 +23,7 @@ export async function runBillingAgent(
     system: BILLING_SYSTEM,
     messages: toModelMessages(messages),
     tools,
-    maxSteps: 5,
+    stopWhen: stepCountIs(5),
   });
   return text ?? "I'm sorry, I couldn't generate a response.";
 }
@@ -30,13 +32,13 @@ export async function runBillingAgent(
 export function runBillingAgentStream(
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
   ctx: AgentContext
-) {
+): { textStream: AsyncIterable<string>; text: PromiseLike<string>; fullStream: AsyncIterable<unknown> } {
   const tools = createBillingTools(ctx);
   return streamText({
     model: getModel(),
     system: BILLING_SYSTEM,
     messages: toModelMessages(messages),
     tools,
-    maxSteps: 5,
+    stopWhen: stepCountIs(5),
   });
 }

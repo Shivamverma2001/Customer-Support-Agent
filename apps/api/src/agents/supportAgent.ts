@@ -1,10 +1,12 @@
-import { generateText, streamText } from "ai";
+import { generateText, streamText, stepCountIs } from "ai";
 import { getModel } from "./model";
 import { createSupportTools, type AgentContext } from "./tools";
 
 const SUPPORT_SYSTEM = `You are a friendly customer support agent. You help with general questions, FAQs, troubleshooting, and account issues.
 Use the query_conversation_history tool when the user refers to earlier messages or when you need context from this conversation.
-Keep responses concise and helpful. If you don't know something, say so and suggest contacting support.`;
+Keep responses concise and helpful. If you don't know something, say so and suggest contacting support.
+
+IMPORTANT: After calling tools, you MUST always respond with a clear, conversational message to the user. Never end without writing a text reply.`;
 
 const toModelMessages = (messages: Array<{ role: string; content: string }>) =>
   messages
@@ -21,7 +23,7 @@ export async function runSupportAgent(
     system: SUPPORT_SYSTEM,
     messages: toModelMessages(messages),
     tools,
-    maxSteps: 5,
+    stopWhen: stepCountIs(5),
   });
   return text ?? "I'm sorry, I couldn't generate a response.";
 }
@@ -30,13 +32,13 @@ export async function runSupportAgent(
 export function runSupportAgentStream(
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
   ctx: AgentContext
-) {
+): { textStream: AsyncIterable<string>; text: PromiseLike<string>; fullStream: AsyncIterable<unknown> } {
   const tools = createSupportTools(ctx);
   return streamText({
     model: getModel(),
     system: SUPPORT_SYSTEM,
     messages: toModelMessages(messages),
     tools,
-    maxSteps: 5,
+    stopWhen: stepCountIs(5),
   });
 }

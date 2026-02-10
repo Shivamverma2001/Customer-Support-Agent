@@ -188,12 +188,34 @@ export async function* sendMessageStream(
   }
 
   let reply = "";
-  for await (const chunk of outcome.result.textStream) {
-    reply += chunk;
-    yield { type: "chunk", text: chunk };
+  const result = await Promise.resolve(outcome.result);
+  try {
+    const fullStream = (result as { fullStream?: AsyncIterable<{ type: string; text?: string }> }).fullStream;
+    if (fullStream) {
+      for await (const part of fullStream) {
+        if (part.type === "text-delta" && part.text) {
+          reply += part.text;
+          yield { type: "chunk", text: part.text };
+        }
+      }
+    } else {
+      for await (const chunk of result.textStream) {
+        reply += chunk;
+        yield { type: "chunk", text: chunk };
+      }
+    }
+  } catch (err) {
+    console.error("[chatService] stream error:", err);
   }
-  const finalText = await outcome.result.text;
-  const fullReply = (finalText ?? reply) || "I'm sorry, I couldn't generate a response.";
+  const finalText = await result.text;
+  let fullReply = (finalText ?? reply) || "";
+  if (!fullReply) {
+    // Fallback: stream returned no text (e.g. tool-only response), use non-streaming agent
+    const { runAgent } = await import("../agents/runAgent");
+    const fallbackText = await runAgent(intent, messages, ctx);
+    fullReply = fallbackText || "I'm sorry, I couldn't generate a response.";
+    yield { type: "chunk", text: fullReply };
+  }
   const assistant = await createMessage(userMsg.conversationId, fullReply, "assistant", userId);
   yield {
     type: "done",

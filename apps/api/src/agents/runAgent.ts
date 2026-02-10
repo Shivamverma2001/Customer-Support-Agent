@@ -31,7 +31,12 @@ export function runAgentStream(
   messages: Message[],
   ctx: AgentContext
 ):
-  | { type: "stream"; result: { textStream: AsyncIterable<string>; text: Promise<string> } }
+  | {
+      type: "stream";
+      result:
+        | { textStream: AsyncIterable<string>; text: PromiseLike<string>; fullStream?: AsyncIterable<unknown> }
+        | Promise<{ textStream: AsyncIterable<string>; text: PromiseLike<string>; fullStream?: AsyncIterable<unknown> }>;
+    }
   | { type: "fallback"; text: string } {
   if (intent === "unknown") return { type: "fallback", text: FALLBACK_MESSAGE };
   if (intent === "support") return { type: "stream", result: runSupportAgentStream(messages, ctx) };
