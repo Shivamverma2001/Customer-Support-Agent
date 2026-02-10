@@ -6,6 +6,18 @@ const DEMO_EMAIL = "demo@example.com";
 /** Phase 6 bonus: context compaction — cap messages sent to the model to avoid token overflow. */
 const MAX_CONTEXT_MESSAGES = 25;
 
+type ConversationListItem = {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  _count: { messages: number };
+};
+
+type MessageItem = { id: string; role: string; content: string; createdAt: Date };
+
+/** Message shape as returned from getConversationById (createdAt is ISO string). */
+type ReturnedMessageItem = { id: string; role: string; content: string; createdAt: string };
+
 async function getOrCreateDemoUserId(): Promise<string> {
   const user = await prisma.user.upsert({
     where: { email: DEMO_EMAIL },
@@ -22,7 +34,7 @@ export async function listConversations(userId?: string) {
     orderBy: { updatedAt: "desc" },
     select: { id: true, createdAt: true, updatedAt: true, _count: { select: { messages: true } } },
   });
-  return list.map((c) => ({
+  return list.map((c: ConversationListItem) => ({
     id: c.id,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
@@ -43,7 +55,7 @@ export async function getConversationById(conversationId: string, userId?: strin
     id: conv.id,
     createdAt: conv.createdAt.toISOString(),
     updatedAt: conv.updatedAt.toISOString(),
-    messages: conv.messages.map((m) => ({
+    messages: conv.messages.map((m: MessageItem) => ({
       id: m.id,
       role: m.role,
       content: m.content,
@@ -61,7 +73,7 @@ export async function getConversationHistoryForAgent(
   const conv = await getConversationById(conversationId, userId);
   if (!conv) return null;
   const last = conv.messages.slice(-limit);
-  return last.map((m) => `[${m.role}]: ${m.content}`).join("\n");
+  return last.map((m: ReturnedMessageItem) => `[${m.role}]: ${m.content}`).join("\n");
 }
 
 export async function deleteConversation(conversationId: string, userId?: string) {
@@ -77,17 +89,18 @@ export async function createMessage(
   content: string,
   role: "user" | "assistant",
   userId?: string
-) {
+): Promise<{ conversationId: string; messageId: string; createdAt: string } | null> {
   const uid = userId ?? (await getOrCreateDemoUserId());
-  let convId = conversationId;
-  if (!convId) {
+  let convId: string;
+  if (!conversationId) {
     const conv = await prisma.conversation.create({
       data: { userId: uid },
     });
     convId = conv.id;
   } else {
-    const existing = await prisma.conversation.findFirst({ where: { id: convId, userId: uid } });
+    const existing = await prisma.conversation.findFirst({ where: { id: conversationId, userId: uid } });
     if (!existing) return null;
+    convId = conversationId;
   }
   const message = await prisma.message.create({
     data: { conversationId: convId, role, content },
@@ -106,14 +119,14 @@ export async function sendMessage(conversationId: string | null, content: string
   const { routeIntent } = await import("../agents/router");
   const { runAgent } = await import("../agents/runAgent");
 
-  const allMessages = conv.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  const allMessages = conv.messages.map((m: ReturnedMessageItem) => ({ role: m.role as "user" | "assistant", content: m.content }));
   const messages = allMessages.slice(-MAX_CONTEXT_MESSAGES);
   const latestMessage = content;
   const conversationSummary =
     messages.length > 1
       ? messages
           .slice(0, -1)
-          .map((m) => `[${m.role}]: ${m.content}`)
+          .map((m: { role: string; content: string }) => `[${m.role}]: ${m.content}`)
           .join("\n")
       : undefined;
 
@@ -157,14 +170,14 @@ export async function* sendMessageStream(
   const { routeIntent } = await import("../agents/router");
   const { runAgentStream } = await import("../agents/runAgent");
 
-  const allMessages = conv.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  const allMessages = conv.messages.map((m: ReturnedMessageItem) => ({ role: m.role as "user" | "assistant", content: m.content }));
   const messages = allMessages.slice(-MAX_CONTEXT_MESSAGES);
   const latestMessage = content;
   const conversationSummary =
     messages.length > 1
       ? messages
           .slice(0, -1)
-          .map((m) => `[${m.role}]: ${m.content}`)
+          .map((m: { role: string; content: string }) => `[${m.role}]: ${m.content}`)
           .join("\n")
       : undefined;
 
