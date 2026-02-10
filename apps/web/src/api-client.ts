@@ -4,11 +4,15 @@ import { hc } from "hono/client";
 /**
  * Type-safe API client (Hono RPC).
  * In dev, Vite proxies /api to the backend. In production, set VITE_API_URL to your API origin.
+ * Trailing slash is stripped so paths never get double slashes (e.g. ...com//api/...).
  */
-const baseUrl =
-  typeof window !== "undefined"
-    ? (import.meta.env.VITE_API_URL ?? "")
-    : "http://localhost:3000";
+const baseUrl = (() => {
+  const url =
+    typeof window !== "undefined"
+      ? (import.meta.env.VITE_API_URL ?? "")
+      : "http://localhost:3000";
+  return url === "" ? "" : url.replace(/\/$/, "");
+})();
 
 export interface ApiClientShape {
   api: {
@@ -65,7 +69,8 @@ export async function postMessageStream(
     signal?: AbortSignal;
   }
 ): Promise<void> {
-  const res = await fetch(`${baseUrl}/api/chat/messages/stream`, {
+  const streamUrl = baseUrl ? `${baseUrl}/api/chat/messages/stream` : "/api/chat/messages/stream";
+  const res = await fetch(streamUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
