@@ -3,6 +3,7 @@
  * Phase 2: All 7 API routes; Phase 6 bonus: rate limiting.
  */
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import * as chatController from "./controllers/chatController";
 import * as agentsController from "./controllers/agentsController";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
@@ -10,6 +11,7 @@ import { rateLimitMiddleware } from "./middleware/rateLimit";
 
 const app = new Hono();
 
+app.use("*", cors());
 app.use("*", rateLimitMiddleware);
 
 // ——— Root (Vercel rewrite sends / here)
