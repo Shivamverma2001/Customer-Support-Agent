@@ -186,3 +186,15 @@ assignment/
 - **Tests:** Vitest in `apps/api`; run `npm run test` (or `npm run test:watch`).
 - **Context:** Last 25 messages sent to the router/agents to avoid token overflow.
 - **Loader text:** UI cycles “Thinking…”, “Searching…”, etc. while waiting for the first stream chunk.
+
+---
+
+## Links
+
+| Link | URL |
+|------|-----|
+| **Live website** | [AI Customer Support](https://customer-support-agent-web.vercel.app/) |
+| **Demo video (Google Drive)** | [Watch demo video](https://drive.google.com/file/d/15bKgmCax7wTbasBNOUg-ELg0AHcZo2gu/view?usp=drive_link) |
+| **LinkedIn post** | [View post on LinkedIn](https://www.linkedin.com/posts/shivamverma-sv_ai-multiagentai-fullstackdevelopment-activity-7427046467661357058-pqh8?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAADOQ4akBNBBSuRIpdVpjjXtvdKaakqh8KJ0) |
+
+Replace the placeholder URLs above with your actual links before submission.
